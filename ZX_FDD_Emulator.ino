@@ -178,7 +178,12 @@ FATFS fat;
 ///
 /// MAIN Routine
 ///////////////////////////////////////////
-int main()
+void setup() 
+{
+  
+}
+
+void loop()
 {    
     //init(); // init arduino libraries
 
