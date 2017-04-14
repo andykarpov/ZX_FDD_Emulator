@@ -9,8 +9,6 @@
 #include "SDCardModule.h"
 #include "Fat32Module.h"
 #include "LCDModule.h"
-#include <ClickEncoder.h>
-#include <TimerOne.h>
 
 /// EMULATOR START -------------------------------------------------------------------------------------------------
 
@@ -42,6 +40,8 @@ void inline PCINT2_disable() { PCICR &= ~_BV(PCIE2); }
 
 
 #if (USE_ENCODER == 1)  // if encoder selected in config
+#include <ClickEncoder.h>
+#include <TimerOne.h>
 ClickEncoder *encoder;
 volatile int16_t encoder_last = 0, encoder_val = 0;
 void timerIsr() {
