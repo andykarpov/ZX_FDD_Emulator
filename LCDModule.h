@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 // I2C Extender settings
-#define LCDEX_ADDR  0x20  // Extender address, 0x27 for standard chinese module
+#define LCDEX_ADDR  0x40  // Extender address, 0x27*2 for standard chinese module, you should multiply your address by 2!
 #define LCDEX_RS    4     // RS pin on extender
 #define LCDEX_RW    5     // RW pin on extender
 #define LCDEX_EN    6     // EN pin on extender
@@ -15,7 +15,7 @@
 #define LCDEX_D6    2     // D6 pin on extender
 #define LCDEX_D7    3     // D7 pin on extender
 
-#define LCD_DELAY_ENABLE_PULSE 1      // enable signal pulse width in micro seconds
+#define LCD_DELAY_ENABLE_PULSE 2      // enable signal pulse width in micro seconds
 
 #define SCL_CLOCK  100000L
 

@@ -300,10 +300,8 @@ DIRECTORY_LIST:
 
 #if (USE_ENCODER == 1)
     // Encoder processing -----------------------------------------
-        encoder_val += encoder->getValue();
         while(PINC & _BV(ENC_BTN))
         {
-            encoder_val += encoder->getValue();
             while(encoder_val == 0)
             {
               encoder_val += encoder->getValue();
