@@ -1,6 +1,6 @@
 #include <util/delay.h>
 #include <Arduino.h>
-
+#include "Wire.h"
 #include "LCDModule.h"
 
 /// Custom characters definition -------------------------------------------------
@@ -17,91 +17,60 @@ const uint8_t symbols[] PROGMEM = {
 
 //// TWI(I2C) MODULE PART --------------------------------------------------------
 
-unsigned char twi_start(unsigned char address)
-{
-    uint8_t tmp;
-    TWCR = _BV(TWEN) | _BV(TWINT) | _BV(TWSTA);
-    
-    while(!(TWCR & _BV(TWINT)));
-    
-    tmp = TW_STATUS & 0xF8;
-    if ( (tmp != TW_START) && (tmp != TW_REP_START)) return 1;
-
-    // send address
-    TWDR = address;
-    TWCR = _BV(TWINT) | _BV(TWEN);
-
-    while(!(TWCR & _BV(TWINT)));
-
-    tmp = TW_STATUS & 0xF8;
-    if ( (tmp != TW_MT_SLA_ACK) && (tmp != TW_MR_SLA_ACK) ) return 1;
-
-    return 0;
-}
-
-void twi_stop(void)
-{
-    TWCR = _BV(TWINT) | _BV(TWEN) | _BV(TWSTO);  
-    while(TWCR & _BV(TWSTO));
-}
-
 void twi_send_byte(unsigned char data)
 {
-    twi_start(LCDEX_ADDR);
+    Wire.beginTransmission(LCDEX_ADDR);
+    unsigned char data_out = 0;
 
-    TWDR = data;// | _BV(LCDEX_LIGHT & light_val); //temporary
-    TWCR = (1<<TWINT) | (1<<TWEN);
+    if(data & 0x80) data_out |= _BV(LCDEX_D7);
+    if(data & 0x40) data_out |= _BV(LCDEX_D6);
+    if(data & 0x20) data_out |= _BV(LCDEX_D5);
+    if(data & 0x10) data_out |= _BV(LCDEX_D4);
+    // 0x08 - light (not used)
+    if(data & 0x04) data_out |= _BV(LCDEX_EN);    
+    if(data & 0x02) data_out |= _BV(LCDEX_RW);
+    if(data & 0x01) data_out |= _BV(LCDEX_RS);
 
-    while(!(TWCR & (1<<TWINT)));
-
-    twi_stop();
+    Wire.write(data_out);
+    Wire.endTransmission();
 }
 
 //// -----------------------------------------------------------------------------
 
 void strobe_en(uint8_t data)
 {
-    data |= _BV(LCDEX_EN);
+    data |= _BV(2);
     twi_send_byte(data);
     lcd_e_delay();
-    data &= ~_BV(LCDEX_EN);
+    data &= ~_BV(2);
     twi_send_byte(data);
-}
-
-unsigned char data_remap(unsigned char data)
-{
-    unsigned char data_out = 0;
-    if(data & 16) data_out |= _BV(LCDEX_D4);
-    if(data & 32) data_out |= _BV(LCDEX_D5);
-    if(data & 64) data_out |= _BV(LCDEX_D6);
-    if(data & 128) data_out |= _BV(LCDEX_D7);
-    return data_out;
 }
 
 void lcd_command(unsigned char cmd)
-{
-    uint8_t lcd_data = data_remap(cmd & 0xF0); //////////
-    lcd_data &= ~_BV(LCDEX_RS);
+{  
+    uint8_t lcd_data = (cmd & 0xF0);
+    lcd_data &= ~_BV(0);
     strobe_en(lcd_data);
     twi_send_byte(lcd_data);
-    _delay_us(37);
+    _delay_us(100);
+
+    lcd_data = ((cmd & 0x0F)<<4);
+    lcd_data &= ~_BV(0);
+    strobe_en(lcd_data);
+    twi_send_byte(lcd_data);
  
-    lcd_data = data_remap((cmd & 0x0F)<<4); //////////
-    lcd_data &= ~_BV(LCDEX_RS);
-    strobe_en(lcd_data);
-    twi_send_byte(lcd_data);
-    if(cmd & 0b11111100) _delay_us(37); else _delay_ms(2);
+    if(cmd & 0b11111100) _delay_us(100); else _delay_ms(2);
 }
 
 void lcd_putch(unsigned char chr)
 {
-    uint8_t lcd_data = data_remap(chr & 0xF0); //////////
-    lcd_data |= _BV(LCDEX_RS);
+    uint8_t lcd_data = (chr & 0xF0);
+    lcd_data |= _BV(0);
     strobe_en(lcd_data);
-    _delay_us(37);
- 
-    lcd_data = data_remap((chr & 0x0F)<<4); //////////
-    lcd_data |= _BV(LCDEX_RS);
+    _delay_us(100);
+
+    lcd_data = ((chr & 0x0F)<<4);
+    lcd_data |= _BV(0);
     strobe_en(lcd_data);
     twi_send_byte(lcd_data);
     _delay_ms(2);
@@ -119,22 +88,20 @@ void lcd_generate_char(uint8_t num, uint8_t data_num)
 
 void LCD_init()
 {
+    Wire.begin();
 
-    TWI_PORT |= _BV(TWI_SCL) | _BV(TWI_SDA);  // Set Pull-Up on SCL, SDA
-    TWI_DDR &=~(_BV(TWI_SCL) | _BV(TWI_SDA)); // Set SCL,SDA as input
+    // SEE PAGE 45/46 FOR INITIALIZATION SPECIFICATION!
+    // according to datasheet, we need at least 40ms after power rises above 2.7V
+    // before sending commands. Arduino can turn on way befer 4.5V so we'll wait 50
+    delayMicroseconds(50000); 
 
-    // set bitrate
-    TWSR = 0;                         /* no prescaler */
-    TWBR = ((F_CPU/SCL_CLOCK)-16)/2;  /* must be > 10 for stable operation */    
-
-    _delay_ms(40);
-
+    // Now we pull both RS and R/W low to begin commands
     uint8_t lcd_data = 0b00000000;
     twi_send_byte(lcd_data);
     _delay_ms(40);
 
     // 8bit mode
-    lcd_data = data_remap(0b0011) << 4;
+    lcd_data = 0b00110000;
     twi_send_byte(lcd_data);
 
     strobe_en(lcd_data);  
@@ -145,7 +112,7 @@ void LCD_init()
     _delay_us(100);
 
     // set 4bit mode
-    lcd_data = data_remap(0b0010) << 4;
+    lcd_data = 0b00100000;
     twi_send_byte(lcd_data);
     strobe_en(lcd_data);
     twi_send_byte(lcd_data);
@@ -184,8 +151,6 @@ void LCD_light_on()
     //twi_send_byte(0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 void LCD_light_off()
 {
     light_val = 0;
@@ -196,6 +161,7 @@ uint8_t LCD_check_light()
 {
     return light_val;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /// set cursor position
