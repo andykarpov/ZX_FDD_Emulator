@@ -43,7 +43,7 @@ void inline PCINT2_disable() { PCICR &= ~_BV(PCIE2); }
 #include <ClickEncoder.h>
 #include <TimerOne.h>
 ClickEncoder *encoder;
-volatile int16_t encoder_last = 0, encoder_val = 0;
+int16_t encoder_last = 0, encoder_val = 0;
 void timerIsr() {
   encoder->service();
 }
@@ -315,21 +315,24 @@ DIRECTORY_LIST:
                 {
                     if(disp_index == 0)
                     { // only move pointer
-                        if(first) first = 0; else if(readdir(3,0) == -1) goto MOUNT;
+                        if(first) first = 0; else {
+                          int8_t res = readdir(3,0);
+                          if (res < 0) goto MOUNT;
+                        }
                         disp_index=1;
                         LCD_print_char(0,1,0);
                         LCD_print_char(0,0,32);
                     }
                     else
                     { // load next entry
-                        uint8_t res = readdir(1,0);
+                        int8_t res = readdir(1,0);
                         if(res == 0)
                         {
                             first = 0;
                             LCD_clear();
                             print_files(disp_index);
                         }
-                        else if(res == -1) goto MOUNT;
+                        else if(res < 0) goto MOUNT;
                     }
                 }
                 encoder_val = 0;
@@ -342,20 +345,21 @@ DIRECTORY_LIST:
                 {
                     if(disp_index == 1)
                     { // only move pointer
-                        if(readdir(2,1) == -1) goto MOUNT;
+                        int8_t res = readdir(2,1);
+                        if (res < 0) goto MOUNT;
                         disp_index=0;                        
                         LCD_print_char(0,0,0);
                         LCD_print_char(0,1,32);
                     }
                     else if(!first)
                     { // load previous entry
-                        uint8_t res = readdir(0,1);
+                        int8_t res = readdir(0,1);
                         if(res == 0)
                         {
                             LCD_clear();
                             print_files(disp_index);
                         }
-                        else if(res == -1) goto MOUNT;
+                        else if(res < 0) goto MOUNT;
                     }
                 }
                 encoder_val = 0;
@@ -386,7 +390,7 @@ DIRECTORY_LIST:
                       }
                       else
                       { // load next entry
-                          uint8_t res = readdir(1,0);
+                          int8_t res = readdir(1,0);
                           if(res == 0)
                           {
                               first = 0;
@@ -419,7 +423,7 @@ DIRECTORY_LIST:
                       }
                       else if(!first)
                       { // load previous entry
-                          uint8_t res = readdir(0,1);
+                          int8_t res = readdir(0,1);
                           if(res == 0)
                           {
                               LCD_clear();
