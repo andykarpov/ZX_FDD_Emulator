@@ -386,7 +386,7 @@ DIRECTORY_LIST:
                   {
                       if(disp_index == 0)
                       { // only move pointer
-                          if(first) first = 0; else if(readdir(3,0) == -1) goto MOUNT;
+                          if(first) first = 0; else if(readdir(3,0) < 0) goto MOUNT;
                           disp_index=1;
                           LCD_print_char(0,1,0);
                           LCD_print_char(0,0,32);
@@ -400,7 +400,7 @@ DIRECTORY_LIST:
                               LCD_clear();
                               print_files(disp_index);
                           }
-                          else if(res == -1) goto MOUNT;
+                          else if(res < 0) goto MOUNT;
                       }
                   }
                   // wait button released
@@ -419,7 +419,7 @@ DIRECTORY_LIST:
                   {
                       if(disp_index == 1)
                       { // only move pointer
-                          if(readdir(2,1) == -1) goto MOUNT;
+                          if(readdir(2,1) < 0) goto MOUNT;
                           disp_index=0;                        
                           LCD_print_char(0,0,0);
                           LCD_print_char(0,1,32);
@@ -432,7 +432,7 @@ DIRECTORY_LIST:
                               LCD_clear();
                               print_files(disp_index);
                           }
-                          else if(res == -1) goto MOUNT;
+                          else if(res < 0) goto MOUNT;
                       }
                   }
                   // wait button released
