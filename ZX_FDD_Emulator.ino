@@ -33,8 +33,6 @@ void inline USART_disable()
     UCSR0B &= ~_BV(TXEN0);
     sei();
 }
-void inline PCINT1_enable() { PCIFR  |= _BV(PCIE1); PCICR  |= _BV(PCIE1); }
-void inline PCINT1_disable() { PCICR &= ~_BV(PCIE1); }
 void inline PCINT2_enable() { PCIFR  |= _BV(PCIE2); PCICR  |= _BV(PCIE2); }
 void inline PCINT2_disable() { PCICR &= ~_BV(PCIE2); }
 
@@ -48,6 +46,19 @@ void timerIsr() {
   encoder->service();
 }
 #endif    // end - if encoder selected in config
+
+void inline ENC_enable() { 
+#if (USE_ENCODER == 1)
+  Timer1.initialize(1000);
+  Timer1.attachInterrupt(timerIsr);
+#endif
+}
+void inline ENC_disable() { 
+#if (USE_ENCODER == 1)
+  Timer1.detachInterrupt();
+  Timer1.stop();
+#endif  
+}
 
 ///////
 /// STEP pin interrupt
@@ -193,8 +204,6 @@ void loop()
 
 #if (USE_ENCODER == 1)
     encoder = new ClickEncoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_BTN, ENC_STEP);
-    Timer1.initialize(1000);
-    Timer1.attachInterrupt(timerIsr);     
 #endif
 
     // INIT pins and ports
@@ -223,7 +232,7 @@ void loop()
         /// MAIN LOOP USED FOR SELECT and INIT SD CARD and other
 
      MOUNT:
-        //PCINT1_disable();
+        ENC_disable();
         LCD_clear();
         LCD_print(F("NO CARD INSERTED"));
      NO_FILES:
@@ -302,6 +311,7 @@ DIRECTORY_LIST:
 
     encoder_val = 0;
     encoder_last = 0;
+    ENC_enable();
     // Encoder processing -----------------------------------------
         while(PINC & _BV(ENC_BTN))
         {
@@ -482,11 +492,11 @@ DIRECTORY_LIST:
                 pf_opendir(&dir,path);
             }
             memset(disp_files,0,sizeof(fnfo)*2);
-            //PCINT1_disable();
+            ENC_disable();
             goto DIRECTORY_LIST;
         }
 
-        //PCINT1_disable();
+        ENC_disable();
 
         /// /END SELECT TRD IMAGE ------------------------------------------------------------------------------
 
