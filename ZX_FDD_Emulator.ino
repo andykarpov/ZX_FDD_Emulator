@@ -299,6 +299,9 @@ DIRECTORY_LIST:
 
 
 #if (USE_ENCODER == 1)
+
+    encoder_val = 0;
+    encoder_last = 0;
     // Encoder processing -----------------------------------------
         while(PINC & _BV(ENC_BTN))
         {
