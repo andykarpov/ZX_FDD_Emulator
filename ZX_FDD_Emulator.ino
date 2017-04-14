@@ -9,6 +9,8 @@
 #include "SDCardModule.h"
 #include "Fat32Module.h"
 #include "LCDModule.h"
+#include <ClickEncoder.h>
+#include <TimerOne.h>
 
 /// EMULATOR START -------------------------------------------------------------------------------------------------
 
@@ -40,24 +42,10 @@ void inline PCINT2_disable() { PCICR &= ~_BV(PCIE2); }
 
 
 #if (USE_ENCODER == 1)  // if encoder selected in config
-///////
-/// ENCODER interrupt
-volatile int8_t encoder_val = 0; // this is important!
-uint8_t prev_pc = 0;
-///////////////////////////////////////////
-ISR(PCINT1_vect)
-{
-    uint8_t pc_val = PINC & (_BV(ENC_A) | _BV(ENC_B)), A=0, B=0;
-    if(prev_pc == (_BV(ENC_A) | _BV(ENC_B)) && pc_val != 0)
-    {
-        for(uint8_t i = 0; i < 50; i++)
-        {
-            if(PINC & _BV(ENC_A)) A++;
-            if(PINC & _BV(ENC_B)) B++;
-        }
-        if(A > 48 && B < 2) encoder_val++; else if(B > 48 && A < 2) encoder_val--;
-    }
-    prev_pc = pc_val;
+ClickEncoder *encoder;
+volatile int16_t encoder_last = 0, encoder_val = 0;
+void timerIsr() {
+  encoder->service();
 }
 #endif    // end - if encoder selected in config
 
@@ -204,12 +192,14 @@ void loop()
     PCMSK2 |= _BV(PCINT20); // SET PCINT2 interrupt on PD4 (STEP pin)
 
 #if (USE_ENCODER == 1)
-    PCMSK1 |= _BV(PCINT10) | _BV(PCINT11); // SET PCINT1 (PC2, PC3) Encoder
+    encoder = new ClickEncoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_BTN, ENC_STEP);
+    Timer1.initialize(1000);
+    Timer1.attachInterrupt(timerIsr);     
 #endif
 
     // INIT pins and ports
     PORTD |= _BV(STEP) | _BV(MOTOR_ON) | _BV(DRIVE_SEL) | _BV(DIR_SEL) | _BV(SIDE_SEL); // set pull-up
-    PORTC |= _BV(ENC_A) | _BV(ENC_B) | _BV(BTN); // set pull-up
+    PORTC |= _BV(ENC_A) | _BV(ENC_B) | _BV(ENC_BTN); // set pull-up
     
     DDRB &= ~_BV(INDEX); // SET INDEX HIGH
     DDRD &= ~(_BV(WP) | _BV(TRK00)); // Set WP,TRK00 as input
@@ -233,7 +223,7 @@ void loop()
         /// MAIN LOOP USED FOR SELECT and INIT SD CARD and other
 
      MOUNT:
-        PCINT1_disable();
+        //PCINT1_disable();
         LCD_clear();
         LCD_print(F("NO CARD INSERTED"));
      NO_FILES:
@@ -310,20 +300,19 @@ DIRECTORY_LIST:
 
 #if (USE_ENCODER == 1)
     // Encoder processing -----------------------------------------
-        encoder_val = 0;
-        prev_pc = 0;
-        PCINT1_enable();
-        while(PINC & _BV(BTN))
+        encoder_val += encoder->getValue();
+        while(PINC & _BV(ENC_BTN))
         {
+            encoder_val += encoder->getValue();
             while(encoder_val == 0)
             {
-              if(!(PINC & _BV(BTN))) break;
+              encoder_val += encoder->getValue();
+              if(!(PINC & _BV(ENC_BTN))) break;
             }
             if( serial != card_read_serial() ) goto MOUNT;
-            
             if(encoder_val > 0)
             { // read next directory entry
-                cli();
+                //cli();
                 if(f_index > 1)
                 {
                     if(disp_index == 0)
@@ -346,11 +335,11 @@ DIRECTORY_LIST:
                     }
                 }
                 encoder_val = 0;
-                sei();
+                //sei();
             }
             else if(encoder_val < 0)
             { // read previous directory entry
-                cli();
+                //cli();
                 if(f_index > 1)
                 {
                     if(disp_index == 1)
@@ -372,16 +361,16 @@ DIRECTORY_LIST:
                     }
                 }
                 encoder_val = 0;
-                sei();
+                //sei();
             }
         }
 #else
     // Buttons processing -----------------------------------------
-        while(PINC & _BV(BTN))
+        while(PINC & _BV(ENC_BTN))
         {
               while((PINC & _BV(ENC_A)) && (PINC & _BV(ENC_B)))
               {
-                  if(!(PINC & _BV(BTN))) break;
+                  if(!(PINC & _BV(ENC_BTN))) break;
               }
               if( serial != card_read_serial() ) goto MOUNT;
               
@@ -453,7 +442,7 @@ DIRECTORY_LIST:
 #endif
 
         btn_cnt = 0;
-        while(!(PINC & _BV(BTN)))
+        while(!(PINC & _BV(ENC_BTN)))
         {
             // wait button is released
             btn_cnt++;
@@ -488,11 +477,11 @@ DIRECTORY_LIST:
                 pf_opendir(&dir,path);
             }
             memset(disp_files,0,sizeof(fnfo)*2);
-            PCINT1_disable();
+            //PCINT1_disable();
             goto DIRECTORY_LIST;
         }
 
-        PCINT1_disable();
+        //PCINT1_disable();
 
         /// /END SELECT TRD IMAGE ------------------------------------------------------------------------------
 
@@ -585,9 +574,9 @@ OPEN_FILE:
 
             while ( ( PIND & (_BV(MOTOR_ON) | _BV(DRIVE_SEL)) ) != 0 )  // wait drive select && motor_on
             {
-                if(!(PINC & _BV(BTN)))
+                if(!(PINC & _BV(ENC_BTN)))
                 { // if button pressed                    
-                    while(!(PINC & _BV(BTN))); // wait button is released
+                    while(!(PINC & _BV(ENC_BTN))); // wait button is released
 
                     DESELECT();
                     

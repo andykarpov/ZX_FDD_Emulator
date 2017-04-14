@@ -5,7 +5,7 @@
 #include <util/atomic.h>
 #include <util/delay.h>
 
-#define USE_ENCODER 0       /// set to 0 to use momentary push buttons instead of encoder
+#define USE_ENCODER 1       /// set to 0 to use momentary push buttons instead of encoder
 
 #define MAX_CYL 82          /// maximal cylinder supported by FDD. More cylinders - more memory used.
 #define MAX_DIR_LEVEL 10    /// maximal subfolders support 15 MAX. The higher level the more memory used
@@ -29,7 +29,12 @@
 
 #define ENC_A     PC2
 #define ENC_B     PC3
-#define BTN       PC1
+#define ENC_BTN   PC1
+
+#define PIN_ENC_A A2
+#define PIN_ENC_B A3
+#define PIN_ENC_BTN A1
+#define ENC_STEP 4
 
 /// SD Card pinout configuration -----------------------------------------------------------------------------
 
