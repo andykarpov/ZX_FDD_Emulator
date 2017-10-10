@@ -6,14 +6,14 @@
 
 // I2C Extender settings
 #define LCDEX_ADDR  0x20  // Extender address, 0x27*2 for standard chinese module, you should multiply your address by 2!
-#define LCDEX_RS    4     // RS pin on extender
-#define LCDEX_RW    5     // RW pin on extender
-#define LCDEX_EN    6     // EN pin on extender
-#define LCDEX_LIGHT 7     // LIGHT pin on extender
-#define LCDEX_D4    0     // D4 pin on extender
-#define LCDEX_D5    1     // D5 pin on extender
-#define LCDEX_D6    2     // D6 pin on extender
-#define LCDEX_D7    3     // D7 pin on extender
+#define LCDEX_RS    0     // RS pin on extender
+#define LCDEX_RW    1     // RW pin on extender
+#define LCDEX_EN    2     // EN pin on extender
+#define LCDEX_LIGHT 3     // LIGHT pin on extender
+#define LCDEX_D4    4     // D4 pin on extender
+#define LCDEX_D5    5     // D5 pin on extender
+#define LCDEX_D6    6     // D6 pin on extender
+#define LCDEX_D7    7     // D7 pin on extender
 
 #define LCD_DELAY_ENABLE_PULSE 2      // enable signal pulse width in micro seconds
 
